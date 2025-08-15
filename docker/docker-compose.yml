@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: boardify-db
+    environment:
+      POSTGRES_USER: boardify_user
+      POSTGRES_PASSWORD: boardify_pass
+      POSTGRES_DB: boardify
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  spring-app:
+    build:
+      context: ../boardify-service   # path to the backend project folder
+      dockerfile: Dockerfile         # backend Dockerfile name
+    container_name: boardify-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/boardify
+      SPRING_DATASOURCE_USERNAME: boardify_user
+      SPRING_DATASOURCE_PASSWORD: boardify_pass
+
+volumes:
+  postgres_data:

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JpbDataSourceConfig">
+    <data-sources>
+      <data-source id="649952d1-28c9-4478-bb94-73947318933e" name="Boardify" url="jdbc:postgresql://localhost/Boardify" driverClass="org.postgresql.Driver" />
+    </data-sources>
+  </component>
+</project>
