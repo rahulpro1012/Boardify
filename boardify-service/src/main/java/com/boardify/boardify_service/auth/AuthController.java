@@ -5,7 +5,7 @@ import com.boardify.boardify_service.auth.dto.*;
 import com.boardify.boardify_service.auth.entity.RefreshToken;
 import com.boardify.boardify_service.repository.UserRepository;
 import com.boardify.boardify_service.security.JwtService;
-import com.boardify.boardify_service.service.RefreshTokenService;
+import com.boardify.boardify_service.auth.service.RefreshTokenService;
 import com.boardify.boardify_service.user.Role;
 import com.boardify.boardify_service.user.UserEntity;
 import jakarta.validation.Valid;
@@ -16,10 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 

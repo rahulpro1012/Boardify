@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/Boardify.iml" filepath="$PROJECT_DIR$/.idea/Boardify.iml" />
-      <module fileurl="file://$PROJECT_DIR$/boardify-service/boardify-service.iml" filepath="$PROJECT_DIR$/boardify-service/boardify-service.iml" />
     </modules>
   </component>
 </project>

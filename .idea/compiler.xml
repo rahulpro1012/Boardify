@@ -10,9 +10,6 @@
         <module name="boardify-service" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="boardify-service" target="17" />
-    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
