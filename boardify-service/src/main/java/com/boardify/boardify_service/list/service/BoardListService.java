@@ -27,14 +27,33 @@ public class BoardListService {
 
     @Transactional
     public ListDto create(Long boardId, CreateListRequest req, String actingEmail) {
-        BoardEntity board = boards.findById(boardId).orElseThrow(() -> new RuntimeException("Board not found"));
-        // access check can be added here
-        int nextPos = (int) lists.countByBoard(board);
-        BoardList entity = new BoardList(); entity.setBoard(board); entity.setName(req.getName()); entity.setPosition(nextPos);
-        BoardList saved = lists.save(entity);
+        BoardEntity board = boards.findById(boardId)
+                .orElseThrow(() -> new RuntimeException("Board not found"));
 
-        ListCreatedEvent ev = new ListCreatedEvent(); ev.boardId = boardId; ev.listId = saved.getId(); ev.name = saved.getName(); ev.position = saved.getPosition();
-        events.publish(Topics.LIST_EVENTS, "list-created-"+saved.getId(), ev);
+        // only board members/owners can create lists
+        boolean allowed = board.getCreatedBy().getEmail().equals(actingEmail)
+                || board.getMembers().stream().anyMatch(m -> m.equals(actingEmail));
+        if (!allowed) throw new RuntimeException("Forbidden");
+
+        // calculate safe unique position
+        Double maxPosition = lists.findMaxPositionByBoardId(boardId);
+        Double newPosition = (maxPosition == null ? 1.0 : maxPosition + 1.0);
+
+        BoardList newList = new BoardList();
+        newList.setName(req.getName());
+        newList.setBoard(board);
+        newList.setPosition(newPosition);
+
+        BoardList saved = lists.save(newList);
+
+        // emit Kafka event
+        ListCreatedEvent ev = new ListCreatedEvent();
+        ev.boardId = boardId;
+        ev.listId = saved.getId();
+        ev.name = saved.getName();
+        ev.position = saved.getPosition();
+        events.publish(Topics.LIST_EVENTS, "list-created-" + saved.getId(), ev);
+
         return toDto(saved);
     }
 
@@ -47,7 +66,6 @@ public class BoardListService {
     public ListDto update(Long listId, UpdateListRequest req) {
         BoardList l = lists.findById(listId).orElseThrow(() -> new RuntimeException("List not found"));
         if (req.getName() != null) l.setName(req.getName());
-        if (req.getPosition() != null) l.setPosition(req.getPosition());
         BoardList saved = lists.save(l);
         ListUpdatedEvent ev = new ListUpdatedEvent(); ev.listId = saved.getId(); ev.name = saved.getName(); ev.position = saved.getPosition();
         events.publish(Topics.LIST_EVENTS, "list-updated-"+saved.getId(), ev);
@@ -65,21 +83,66 @@ public class BoardListService {
 
     @Transactional
     public void reorder(Long listId, int targetIndex) {
-        BoardList l = lists.findById(listId).orElseThrow(() -> new RuntimeException("List not found"));
+        BoardList l = lists.findById(listId)
+                .orElseThrow(() -> new RuntimeException("List not found"));
         BoardEntity board = l.getBoard();
         List<BoardList> all = lists.findByBoardOrderByPositionAsc(board);
 
+        // remove the moving list
         all.removeIf(x -> x.getId().equals(listId));
+
+        // clamp targetIndex
         if (targetIndex < 0) targetIndex = 0;
         if (targetIndex > all.size()) targetIndex = all.size();
-        all.add(targetIndex, l);
 
-        for (int i = 0; i < all.size(); i++) all.get(i).setPosition(i);
-        lists.saveAll(all);
+        // find neighbors at targetIndex
+        Double newPos;
+        if (targetIndex == 0) {
+            double after = all.get(0).getPosition();
+            newPos = after - 1;
+        } else if (targetIndex == all.size()) {
+            double before = all.get(all.size() - 1).getPosition();
+            newPos = before + 1;
+        } else {
+            double before = all.get(targetIndex - 1).getPosition();
+            double after = all.get(targetIndex).getPosition();
+            newPos = (before + after) / 2;
+        }
 
-        ListReorderedEvent ev = new ListReorderedEvent(); ev.boardId = board.getId(); ev.listId = listId; ev.targetIndex = targetIndex;
-        events.publish(Topics.LIST_EVENTS, "list-reordered-"+listId, ev);
+        l.setPosition(newPos);
+        lists.save(l);
+
+        // ✅ Normalization: if differences get too small, renumber all positions
+        normalizePositionsIfNeeded(board);
+
+        // publish event
+        ListReorderedEvent ev = new ListReorderedEvent();
+        ev.boardId = board.getId();
+        ev.listId = listId;
+        ev.targetIndex = targetIndex;
+        events.publish(Topics.LIST_EVENTS, "list-reordered-" + listId, ev);
     }
+
+    private void normalizePositionsIfNeeded(BoardEntity board) {
+        List<BoardList> all = lists.findByBoardOrderByPositionAsc(board);
+        boolean tooClose = false;
+
+        for (int i = 1; i < all.size(); i++) {
+            double diff = all.get(i).getPosition() - all.get(i - 1).getPosition();
+            if (diff < 0.000001) { // threshold for "too close"
+                tooClose = true;
+                break;
+            }
+        }
+
+        if (tooClose) {
+            for (int i = 0; i < all.size(); i++) {
+                all.get(i).setPosition((double) (i + 1));
+            }
+            lists.saveAll(all);
+        }
+    }
+
 
     private ListDto toDto(BoardList l) { return new ListDto(l.getId(), l.getBoard().getId(), l.getName(), l.getPosition()); }
 }

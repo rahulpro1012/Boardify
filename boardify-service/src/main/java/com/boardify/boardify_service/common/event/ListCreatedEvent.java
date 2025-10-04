@@ -5,4 +5,4 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ListCreatedEvent { public Long boardId; public Long listId; public String name; public int position; public String version = "1"; }
+public class ListCreatedEvent { public Long boardId; public Long listId; public String name; public double position; public String version = "1"; }

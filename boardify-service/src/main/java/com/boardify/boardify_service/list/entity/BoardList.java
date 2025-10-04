@@ -22,6 +22,7 @@ public class BoardList {
     private String name;
 
     @Column(nullable = false)
-    private int position; // 0..N for ordering left->right
+    private double position; // 0..N for ordering left->right
+
 
 }

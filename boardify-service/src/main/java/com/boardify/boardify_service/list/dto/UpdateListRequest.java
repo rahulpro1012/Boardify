@@ -6,6 +6,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class UpdateListRequest {
-    private String name; private Integer position;
+    private String name;
 }
 
