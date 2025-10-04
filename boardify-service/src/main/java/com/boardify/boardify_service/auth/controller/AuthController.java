@@ -1,13 +1,13 @@
-package com.boardify.boardify_service.auth;
+package com.boardify.boardify_service.auth.controller;
 
 
 import com.boardify.boardify_service.auth.dto.*;
 import com.boardify.boardify_service.auth.entity.RefreshToken;
-import com.boardify.boardify_service.repository.UserRepository;
+import com.boardify.boardify_service.user.repository.UserRepository;
 import com.boardify.boardify_service.security.JwtService;
 import com.boardify.boardify_service.auth.service.RefreshTokenService;
-import com.boardify.boardify_service.user.Role;
-import com.boardify.boardify_service.user.UserEntity;
+import com.boardify.boardify_service.user.entity.Role;
+import com.boardify.boardify_service.user.entity.UserEntity;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;

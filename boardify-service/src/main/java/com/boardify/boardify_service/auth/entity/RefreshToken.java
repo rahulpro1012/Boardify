@@ -1,14 +1,11 @@
 package com.boardify.boardify_service.auth.entity;
 
-import com.boardify.boardify_service.user.UserEntity;
+import com.boardify.boardify_service.user.entity.UserEntity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
-import org.hibernate.annotations.UuidGenerator;
-import org.springframework.security.core.userdetails.User;
 
-import java.sql.ConnectionBuilder;
 import java.time.Instant;
 import java.util.UUID;
 

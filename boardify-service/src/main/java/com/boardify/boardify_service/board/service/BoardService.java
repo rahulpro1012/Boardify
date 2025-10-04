@@ -1,15 +1,15 @@
 package com.boardify.boardify_service.board.service;
 
-import com.boardify.boardify_service.board.BoardEntity;
+import com.boardify.boardify_service.board.entity.BoardEntity;
 import com.boardify.boardify_service.board.dto.BoardDto;
 import com.boardify.boardify_service.board.dto.CreateBoardRequest;
 import com.boardify.boardify_service.board.dto.UpdateBoardRequest;
 import com.boardify.boardify_service.common.event.*;
 import com.boardify.boardify_service.common.kafka.EventPublisher;
 import com.boardify.boardify_service.common.kafka.Topics;
-import com.boardify.boardify_service.repository.BoardRepository;
-import com.boardify.boardify_service.repository.UserRepository;
-import com.boardify.boardify_service.user.UserEntity;
+import com.boardify.boardify_service.board.repository.BoardRepository;
+import com.boardify.boardify_service.user.repository.UserRepository;
+import com.boardify.boardify_service.user.entity.UserEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

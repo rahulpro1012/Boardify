@@ -1,8 +1,8 @@
 package com.boardify.boardify_service.auth.service;
 
 import com.boardify.boardify_service.auth.entity.RefreshToken;
-import com.boardify.boardify_service.repository.RefreshTokenRepository;
-import com.boardify.boardify_service.user.UserEntity;
+import com.boardify.boardify_service.auth.repository.RefreshTokenRepository;
+import com.boardify.boardify_service.user.entity.UserEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;

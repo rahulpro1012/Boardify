@@ -1,6 +1,6 @@
-package com.boardify.boardify_service.repository;
+package com.boardify.boardify_service.board.repository;
 
-import com.boardify.boardify_service.board.BoardEntity;
+import com.boardify.boardify_service.board.entity.BoardEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

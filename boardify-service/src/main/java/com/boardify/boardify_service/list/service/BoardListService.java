@@ -1,6 +1,6 @@
 package com.boardify.boardify_service.list.service;
 
-import com.boardify.boardify_service.board.BoardEntity;
+import com.boardify.boardify_service.board.entity.BoardEntity;
 import com.boardify.boardify_service.common.event.ListCreatedEvent;
 import com.boardify.boardify_service.common.event.ListDeletedEvent;
 import com.boardify.boardify_service.common.event.ListReorderedEvent;
@@ -11,8 +11,8 @@ import com.boardify.boardify_service.list.dto.CreateListRequest;
 import com.boardify.boardify_service.list.dto.ListDto;
 import com.boardify.boardify_service.list.dto.UpdateListRequest;
 import com.boardify.boardify_service.list.entity.BoardList;
-import com.boardify.boardify_service.repository.BoardListRepository;
-import com.boardify.boardify_service.repository.BoardRepository;
+import com.boardify.boardify_service.list.repository.BoardListRepository;
+import com.boardify.boardify_service.board.repository.BoardRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

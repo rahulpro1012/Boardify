@@ -1,7 +1,7 @@
-package com.boardify.boardify_service.repository;
+package com.boardify.boardify_service.auth.repository;
 
 import com.boardify.boardify_service.auth.entity.RefreshToken;
-import com.boardify.boardify_service.user.UserEntity;
+import com.boardify.boardify_service.user.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.security.core.userdetails.User;

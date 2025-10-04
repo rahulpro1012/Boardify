@@ -1,8 +1,9 @@
-package com.boardify.boardify_service.user;
+package com.boardify.boardify_service.user.service;
 
 import java.util.stream.Collectors;
 
-import com.boardify.boardify_service.repository.UserRepository;
+import com.boardify.boardify_service.user.entity.UserEntity;
+import com.boardify.boardify_service.user.repository.UserRepository;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;

@@ -1,6 +1,6 @@
 package com.boardify.boardify_service.list.entity;
 
-import com.boardify.boardify_service.board.BoardEntity;
+import com.boardify.boardify_service.board.entity.BoardEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;

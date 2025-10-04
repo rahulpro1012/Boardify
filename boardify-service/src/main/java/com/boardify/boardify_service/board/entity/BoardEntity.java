@@ -1,9 +1,8 @@
-package com.boardify.boardify_service.board;
+package com.boardify.boardify_service.board.entity;
 
-import com.boardify.boardify_service.user.UserEntity;
+import com.boardify.boardify_service.user.entity.UserEntity;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
-import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 

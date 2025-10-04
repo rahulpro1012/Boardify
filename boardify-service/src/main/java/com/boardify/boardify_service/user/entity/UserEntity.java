@@ -1,4 +1,4 @@
-package com.boardify.boardify_service.user;
+package com.boardify.boardify_service.user.entity;
 
 import jakarta.persistence.*;
 import java.util.*;

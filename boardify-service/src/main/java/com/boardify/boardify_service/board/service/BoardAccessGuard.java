@@ -1,7 +1,7 @@
 package com.boardify.boardify_service.board.service;
 
-import com.boardify.boardify_service.board.BoardEntity;
-import com.boardify.boardify_service.repository.BoardRepository;
+import com.boardify.boardify_service.board.entity.BoardEntity;
+import com.boardify.boardify_service.board.repository.BoardRepository;
 import org.springframework.stereotype.Component;
 
 @Component
