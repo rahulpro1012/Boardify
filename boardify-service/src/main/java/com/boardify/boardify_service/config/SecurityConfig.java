@@ -1,6 +1,6 @@
 package com.boardify.boardify_service.config;
 
-import com.boardify.boardify_service.security.JwtAuthFilter;
+import com.boardify.boardify_service.auth.jwt.JwtAuthFilter;
 import org.springframework.context.annotation.*;
 import org.springframework.security.authentication.*;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -10,7 +10,6 @@ import org.springframework.security.crypto.bcrypt.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.http.HttpMethod;
 
 @Configuration
 public class SecurityConfig {

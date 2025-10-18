@@ -4,7 +4,7 @@ package com.boardify.boardify_service.auth.controller;
 import com.boardify.boardify_service.auth.dto.*;
 import com.boardify.boardify_service.auth.entity.RefreshToken;
 import com.boardify.boardify_service.user.repository.UserRepository;
-import com.boardify.boardify_service.security.JwtService;
+import com.boardify.boardify_service.auth.jwt.JwtService;
 import com.boardify.boardify_service.auth.service.RefreshTokenService;
 import com.boardify.boardify_service.user.entity.Role;
 import com.boardify.boardify_service.user.entity.UserEntity;
@@ -143,9 +143,20 @@ public class AuthController {
 
 
     @PostMapping("/logout")
-    public ResponseEntity<?> logout(@CookieValue(value = "refreshToken", required = false) String refreshToken) {
+    public ResponseEntity<?> logout(
+            @CookieValue(value = "refreshToken", required = false) String refreshToken,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        
+        // Invalidate refresh token
         if (refreshToken != null) {
             refreshTokenService.deleteByToken(refreshToken);
+        }
+        
+        // Blacklist access token
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            long exp = jwt.getExpiration(token);
+            jwt.blacklistToken(token, exp);
         }
 
         // Invalidate the cookie by setting maxAge=0
