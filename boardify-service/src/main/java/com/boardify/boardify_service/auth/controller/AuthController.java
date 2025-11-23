@@ -3,6 +3,7 @@ package com.boardify.boardify_service.auth.controller;
 
 import com.boardify.boardify_service.auth.dto.*;
 import com.boardify.boardify_service.auth.entity.RefreshToken;
+import com.boardify.boardify_service.exception.UserNotFoundException;
 import com.boardify.boardify_service.user.repository.UserRepository;
 import com.boardify.boardify_service.auth.jwt.JwtService;
 import com.boardify.boardify_service.auth.service.RefreshTokenService;
@@ -74,7 +75,7 @@ public class AuthController {
 
         // get the user from db
         UserEntity user = userRepository.findByEmail(req.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         // generate access token
         String accessToken = jwt.generateToken(user.getEmail());
@@ -124,7 +125,7 @@ public class AuthController {
     public ResponseEntity<?> changePassword(@AuthenticationPrincipal org.springframework.security.core.userdetails.User principal,
                                             @RequestBody @Valid ChangePasswordRequest req) {
         UserEntity user = users.findByEmail(principal.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (!encoder.matches(req.currentPassword(), user.getPassword())) {
             return ResponseEntity.status(400).body(new MessageResponse("Current password is incorrect"));

@@ -6,6 +6,8 @@ import com.boardify.boardify_service.common.event.TaskMovedEvent;
 import com.boardify.boardify_service.common.event.TaskUpdatedEvent;
 import com.boardify.boardify_service.common.kafka.EventPublisher;
 import com.boardify.boardify_service.common.kafka.Topics;
+import com.boardify.boardify_service.exception.ListNotFoundException;
+import com.boardify.boardify_service.exception.TaskNotFoundException;
 import com.boardify.boardify_service.list.entity.BoardList;
 import com.boardify.boardify_service.list.repository.BoardListRepository;
 import com.boardify.boardify_service.user.repository.UserRepository;
@@ -29,7 +31,7 @@ public class TaskService {
 
     @Transactional
     public TaskDto create(Long listId, CreateTaskRequest req, UserEntity creator) {
-        BoardList list = lists.findById(listId).orElseThrow(() -> new RuntimeException("List not found"));
+        BoardList list = lists.findById(listId).orElseThrow(() -> new ListNotFoundException("List not found"));
         int nextPos = (int) tasks.countByList(list);
         TaskEntity t = new TaskEntity(); t.setList(list); t.setTitle(req.getTitle()); t.setDescription(req.getDescription()); t.setPosition(nextPos); t.setCreatedBy(creator);
         if (req.getAssigneeEmail() != null) {
@@ -43,13 +45,13 @@ public class TaskService {
     }
 
     public List<TaskDto> getByList(Long listId) {
-        BoardList list = lists.findById(listId).orElseThrow(() -> new RuntimeException("List not found"));
+        BoardList list = lists.findById(listId).orElseThrow(() -> new ListNotFoundException("List not found"));
         return tasks.findByListOrderByPositionAsc(list).stream().map(this::toDto).toList();
     }
 
     @Transactional
     public TaskDto update(Long taskId, UpdateTaskRequest req) {
-        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new RuntimeException("Task not found"));
+        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task not found"));
         if (req.getTitle() != null) t.setTitle(req.getTitle());
         if (req.getDescription() != null) t.setDescription(req.getDescription());
         if (req.getAssigneeEmail() != null) {
@@ -64,7 +66,7 @@ public class TaskService {
 
     @Transactional
     public void delete(Long taskId) {
-        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new RuntimeException("Task not found"));
+        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task not found"));
         Long listId = t.getList().getId();
         tasks.delete(t);
         TaskDeletedEvent ev = new TaskDeletedEvent(); ev.taskId = taskId; ev.listId = listId;
@@ -74,9 +76,9 @@ public class TaskService {
     /** Drag & drop move (within same list or across lists) with stable reindexing */
     @Transactional
     public void move(Long taskId, Long toListId, int targetIndex) {
-        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new RuntimeException("Task not found"));
+        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task not found"));
         BoardList from = t.getList();
-        BoardList to = lists.findById(toListId).orElseThrow(() -> new RuntimeException("Target list not found"));
+        BoardList to = lists.findById(toListId).orElseThrow(() -> new ListNotFoundException("Target list not found"));
 
         if (from.getId().equals(to.getId())) {
             // reorder within same list
@@ -113,4 +115,3 @@ public class TaskService {
                 t.getAssignedTo() != null ? t.getAssignedTo().getEmail() : null);
     }
 }
-

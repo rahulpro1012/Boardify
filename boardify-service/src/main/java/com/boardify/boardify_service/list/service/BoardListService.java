@@ -7,6 +7,9 @@ import com.boardify.boardify_service.common.event.ListReorderedEvent;
 import com.boardify.boardify_service.common.event.ListUpdatedEvent;
 import com.boardify.boardify_service.common.kafka.EventPublisher;
 import com.boardify.boardify_service.common.kafka.Topics;
+import com.boardify.boardify_service.exception.BoardNotFoundException;
+import com.boardify.boardify_service.exception.ListNotFoundException;
+import com.boardify.boardify_service.exception.UnauthorizedException;
 import com.boardify.boardify_service.list.dto.CreateListRequest;
 import com.boardify.boardify_service.list.dto.ListDto;
 import com.boardify.boardify_service.list.dto.UpdateListRequest;
@@ -28,12 +31,12 @@ public class BoardListService {
     @Transactional
     public ListDto create(Long boardId, CreateListRequest req, String actingEmail) {
         BoardEntity board = boards.findById(boardId)
-                .orElseThrow(() -> new RuntimeException("Board not found"));
+                .orElseThrow(() -> new BoardNotFoundException("Board not found"));
 
         // only board members/owners can create lists
         boolean allowed = board.getCreatedBy().getEmail().equals(actingEmail)
-                || board.getMembers().stream().anyMatch(m -> m.equals(actingEmail));
-        if (!allowed) throw new RuntimeException("Forbidden");
+                || board.getMembers().stream().anyMatch(m -> m.getEmail().equals(actingEmail));
+        if (!allowed) throw new UnauthorizedException("Forbidden");
 
         // calculate safe unique position
         Double maxPosition = lists.findMaxPositionByBoardId(boardId);
@@ -58,13 +61,13 @@ public class BoardListService {
     }
 
     public List<ListDto> getByBoard(Long boardId, String email) {
-        BoardEntity board = boards.findById(boardId).orElseThrow(() -> new RuntimeException("Board not found"));
+        BoardEntity board = boards.findById(boardId).orElseThrow(() -> new BoardNotFoundException("Board not found"));
         return lists.findByBoardOrderByPositionAsc(board).stream().map(this::toDto).toList();
     }
 
     @Transactional
     public ListDto update(Long listId, UpdateListRequest req) {
-        BoardList l = lists.findById(listId).orElseThrow(() -> new RuntimeException("List not found"));
+        BoardList l = lists.findById(listId).orElseThrow(() -> new ListNotFoundException("List not found"));
         if (req.getName() != null) l.setName(req.getName());
         BoardList saved = lists.save(l);
         ListUpdatedEvent ev = new ListUpdatedEvent(); ev.listId = saved.getId(); ev.name = saved.getName(); ev.position = saved.getPosition();
@@ -74,7 +77,7 @@ public class BoardListService {
 
     @Transactional
     public void delete(Long listId) {
-        BoardList l = lists.findById(listId).orElseThrow(() -> new RuntimeException("List not found"));
+        BoardList l = lists.findById(listId).orElseThrow(() -> new ListNotFoundException("List not found"));
         Long boardId = l.getBoard().getId();
         lists.delete(l);
         ListDeletedEvent ev = new ListDeletedEvent(); ev.listId = listId; ev.boardId = boardId;
@@ -84,7 +87,7 @@ public class BoardListService {
     @Transactional
     public void reorder(Long listId, int targetIndex) {
         BoardList l = lists.findById(listId)
-                .orElseThrow(() -> new RuntimeException("List not found"));
+                .orElseThrow(() -> new ListNotFoundException("List not found"));
         BoardEntity board = l.getBoard();
         List<BoardList> all = lists.findByBoardOrderByPositionAsc(board);
 

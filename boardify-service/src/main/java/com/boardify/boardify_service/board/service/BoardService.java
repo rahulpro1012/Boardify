@@ -8,6 +8,9 @@ import com.boardify.boardify_service.common.event.*;
 import com.boardify.boardify_service.common.kafka.EventPublisher;
 import com.boardify.boardify_service.common.kafka.Topics;
 import com.boardify.boardify_service.board.repository.BoardRepository;
+import com.boardify.boardify_service.exception.BoardNotFoundException;
+import com.boardify.boardify_service.exception.UnauthorizedException;
+import com.boardify.boardify_service.exception.UserNotFoundException;
 import com.boardify.boardify_service.user.repository.UserRepository;
 import com.boardify.boardify_service.user.entity.UserEntity;
 import org.springframework.stereotype.Service;
@@ -49,18 +52,18 @@ public class BoardService {
     }
 
     public BoardDto get(Long id, String email) {
-        BoardEntity b = boards.findById(id).orElseThrow(() -> new RuntimeException("Board not found"));
+        BoardEntity b = boards.findById(id).orElseThrow(() -> new BoardNotFoundException("Board not found"));
         boolean allowed = b.getCreatedBy().getEmail().equals(email) || b.getMembers().stream().anyMatch(u -> u.getEmail().equals(email));
-        if (!allowed) throw new RuntimeException("Forbidden");
+        if (!allowed) throw new UnauthorizedException("Forbidden");
         return toDto(b);
     }
 
     @Transactional
     public BoardDto update(Long id, UpdateBoardRequest req, String email) {
-        BoardEntity b = boards.findById(id).orElseThrow(() -> new RuntimeException("Board not found"));
+        BoardEntity b = boards.findById(id).orElseThrow(() -> new BoardNotFoundException("Board not found"));
         // Owner or member can rename; tune to your RBAC
         boolean allowed = b.getCreatedBy().getEmail().equals(email) || b.getMembers().stream().anyMatch(u -> u.getEmail().equals(email));
-        if (!allowed) throw new RuntimeException("Forbidden");
+        if (!allowed) throw new UnauthorizedException("Forbidden");
         b.setName(req.getName());
         BoardEntity saved = boards.save(b);
 
@@ -71,8 +74,8 @@ public class BoardService {
 
     @Transactional
     public void delete(Long id, String email) {
-        BoardEntity b = boards.findById(id).orElseThrow(() -> new RuntimeException("Board not found"));
-        if (!b.getCreatedBy().getEmail().equals(email)) throw new RuntimeException("Only owner can delete board");
+        BoardEntity b = boards.findById(id).orElseThrow(() -> new BoardNotFoundException("Board not found"));
+        if (!b.getCreatedBy().getEmail().equals(email)) throw new UnauthorizedException("Only owner can delete board");
         boards.delete(b);
         BoardDeletedEvent ev = new BoardDeletedEvent(); ev.boardId = id;
         events.publish(Topics.BOARD_EVENTS, "board-deleted-"+id, ev);
@@ -80,9 +83,9 @@ public class BoardService {
 
     @Transactional
     public void addMember(Long id, String memberEmail, String actingUserEmail) {
-        BoardEntity b = boards.findById(id).orElseThrow(() -> new RuntimeException("Board not found"));
-        if (!b.getCreatedBy().getEmail().equals(actingUserEmail)) throw new RuntimeException("Only owner can add members");
-        UserEntity u = users.findByEmail(memberEmail).orElseThrow(() -> new RuntimeException("User not found"));
+        BoardEntity b = boards.findById(id).orElseThrow(() -> new BoardNotFoundException("Board not found"));
+        if (!b.getCreatedBy().getEmail().equals(actingUserEmail)) throw new UnauthorizedException("Only owner can add members");
+        UserEntity u = users.findByEmail(memberEmail).orElseThrow(() -> new UserNotFoundException("User not found"));
         b.getMembers().add(u); boards.save(b);
         MemberAddedToBoardEvent ev = new MemberAddedToBoardEvent(); ev.boardId = id; ev.memberEmail = memberEmail;
         events.publish(Topics.BOARD_EVENTS, "board-member-added-"+id+"-"+memberEmail, ev);
@@ -91,17 +94,17 @@ public class BoardService {
     @Transactional
     public void removeMember(Long id, String memberEmail, String actingUserEmail) {
         BoardEntity b = boards.findById(id)
-                .orElseThrow(() -> new RuntimeException("Board not found"));
+                .orElseThrow(() -> new BoardNotFoundException("Board not found"));
 
         if (!b.getCreatedBy().getEmail().equals(actingUserEmail)) {
-            throw new RuntimeException("Only owner can remove members");
+            throw new UnauthorizedException("Only owner can remove members");
         }
 
         boolean isMember = b.getMembers().stream()
                 .anyMatch(user -> user.getEmail().equals(memberEmail));
                 
         if (!isMember) {
-            throw new RuntimeException("User is not a member of this board");
+            throw new UserNotFoundException("User is not a member of this board");
         }
 
         b.getMembers().removeIf(user -> user.getEmail().equals(memberEmail));

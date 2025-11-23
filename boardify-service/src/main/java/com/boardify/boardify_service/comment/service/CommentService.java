@@ -7,6 +7,7 @@ import com.boardify.boardify_service.comment.repository.CommentRepository;
 import com.boardify.boardify_service.common.event.CommentAddedEvent;
 import com.boardify.boardify_service.common.kafka.EventPublisher;
 import com.boardify.boardify_service.common.kafka.Topics;
+import com.boardify.boardify_service.exception.TaskNotFoundException;
 import com.boardify.boardify_service.task.entity.TaskEntity;
 import com.boardify.boardify_service.task.repository.TaskRepository;
 import com.boardify.boardify_service.user.entity.UserEntity;
@@ -25,7 +26,7 @@ public class CommentService {
 
     @Transactional
     public CommentDto add(Long taskId, AddCommentRequest req, UserEntity author) {
-        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new RuntimeException("Task not found"));
+        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task not found"));
         CommentEntity c = new CommentEntity(); c.setTask(t); c.setAuthor(author); c.setText(req.getText());
         CommentEntity saved = comments.save(c);
         CommentAddedEvent ev = new CommentAddedEvent(); ev.taskId = taskId; ev.commentId = saved.getId(); ev.author = author.getEmail(); ev.text = saved.getText();
@@ -34,10 +35,9 @@ public class CommentService {
     }
 
     public List<CommentDto> get(Long taskId) {
-        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new RuntimeException("Task not found"));
+        TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task not found"));
         return comments.findByTaskOrderByCreatedAtAsc(t).stream()
                 .map(x -> new CommentDto(x.getId(), taskId, x.getAuthor()!=null?x.getAuthor().getEmail():null, x.getText(), x.getCreatedAt()))
                 .toList();
     }
 }
-
