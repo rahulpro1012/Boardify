@@ -2,7 +2,10 @@ package com.boardify.boardify_service.auth.controller;
 
 
 import com.boardify.boardify_service.auth.dto.*;
+import com.boardify.boardify_service.auth.entity.PasswordResetToken;
 import com.boardify.boardify_service.auth.entity.RefreshToken;
+import com.boardify.boardify_service.auth.repository.PasswordResetTokenRepository;
+import com.boardify.boardify_service.auth.service.EmailService;
 import com.boardify.boardify_service.exception.UserNotFoundException;
 import com.boardify.boardify_service.user.repository.UserRepository;
 import com.boardify.boardify_service.auth.jwt.JwtService;
@@ -17,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -32,9 +36,12 @@ public class AuthController {
     private final PasswordEncoder encoder;
     private final UserRepository userRepository;
     private final RefreshTokenService refreshTokenService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
 
-    public AuthController(AuthenticationManager authManager, JwtService jwt, UserRepository users, PasswordEncoder encoder, UserRepository userRepository, RefreshTokenService refreshTokenService) {
-        this.authManager = authManager; this.jwt = jwt; this.users = users; this.encoder = encoder; this.userRepository=userRepository; this.refreshTokenService=refreshTokenService;
+
+    public AuthController(AuthenticationManager authManager, JwtService jwt, UserRepository users, PasswordEncoder encoder, UserRepository userRepository, RefreshTokenService refreshTokenService, PasswordResetTokenRepository passwordResetTokenRepository, EmailService emailService) {
+        this.authManager = authManager; this.jwt = jwt; this.users = users; this.encoder = encoder; this.userRepository=userRepository; this.refreshTokenService=refreshTokenService; this.passwordResetTokenRepository=passwordResetTokenRepository; this.emailService=emailService;
     }
 
     @PostMapping("/register")
@@ -177,5 +184,55 @@ public class AuthController {
             .sameSite("Strict")
             .maxAge(maxAgeSeconds)
             .build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest req) {
+        UserEntity user = users.findByEmail(req.email())
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        // Security Note: In a real production app, even if user is not found,
+        // you usually return "OK" to prevent email enumeration attacks.
+
+        // Clean up old tokens for this user first
+        passwordResetTokenRepository.deleteByUser(user);
+
+        // Create new token
+        PasswordResetToken resetToken = new PasswordResetToken(user);
+        passwordResetTokenRepository.save(resetToken);
+
+        // Send Email
+        emailService.sendPasswordResetEmail(user.getEmail(), resetToken.getToken());
+
+        return ResponseEntity.ok(new MessageResponse("Password reset email sent"));
+    }
+
+    // 2. User submits the new password with the token
+    @PostMapping("/reset-password")
+    @Transactional // Ensure DB consistency
+    public ResponseEntity<?> resetPassword(@RequestBody @Valid ResetPasswordRequest req) {
+
+        // Find the token
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(req.token())
+                .orElseThrow(() -> new RuntimeException("Invalid token"));
+
+        // Check Expiry
+        if (resetToken.isExpired()) {
+            passwordResetTokenRepository.delete(resetToken);
+            return ResponseEntity.status(400).body(new MessageResponse("Token has expired"));
+        }
+
+        // Update Password
+        UserEntity user = resetToken.getUser();
+        user.setPassword(encoder.encode(req.newPassword()));
+        users.save(user);
+
+        // Security: Revoke all tokens (logout user from everywhere)
+        refreshTokenService.deleteAllForUser(user.getId());
+
+        // Clean up used token
+        passwordResetTokenRepository.delete(resetToken);
+
+        return ResponseEntity.ok(new MessageResponse("Password successfully reset"));
     }
 }

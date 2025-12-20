@@ -47,6 +47,8 @@ public class SecurityConfig {
                             "/api/v1/auth/**",
                             "/auth/**",
                                 "/api/auth/**",
+                                "/auth/forgot-password", // <--- Add this
+                                "/auth/reset-password",
                             "/actuator/health",
                             "/error"  // Allow error endpoint
                         ).permitAll()
