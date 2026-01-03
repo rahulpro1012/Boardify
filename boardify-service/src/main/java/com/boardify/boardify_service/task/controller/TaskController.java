@@ -64,7 +64,7 @@ public class TaskController {
             @PathVariable Long taskId,
             @RequestBody UpdateTaskRequest req) {
         return ResponseEntity.ok(service.update(taskId, req));
-    }
+    }   
 
     /**
      * Moves a task to a different list and/or position.

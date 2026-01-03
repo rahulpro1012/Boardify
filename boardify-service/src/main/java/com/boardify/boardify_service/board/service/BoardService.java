@@ -117,6 +117,7 @@ public class BoardService {
 
     private BoardDto toDto(BoardEntity b) {
         Set<String> memberEmails = b.getMembers().stream().map(UserEntity::getEmail).collect(Collectors.toSet());
+        memberEmails.add(b.getCreatedBy().getEmail());
         return new BoardDto(b.getId(), b.getName(), b.getCreatedBy().getEmail(), b.getCreatedAt(), memberEmails);
     }
 }

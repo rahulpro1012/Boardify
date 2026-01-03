@@ -54,8 +54,8 @@ public class TaskService {
         TaskEntity t = tasks.findById(taskId).orElseThrow(() -> new TaskNotFoundException("Task not found"));
         if (req.getTitle() != null) t.setTitle(req.getTitle());
         if (req.getDescription() != null) t.setDescription(req.getDescription());
-        if (req.getAssigneeEmail() != null) {
-            UserEntity assignee = users.findByEmail(req.getAssigneeEmail()).orElse(null);
+        if (req.getAssignedTo() != null) {
+            UserEntity assignee = users.findByEmail(req.getAssignedTo()).orElse(null);
             t.setAssignedTo(assignee);
         }
         TaskEntity saved = tasks.save(t);
