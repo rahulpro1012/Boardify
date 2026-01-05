@@ -1,4 +1,4 @@
-# Boardify 🚀
+# Boardify 
 
 Event-driven collaborative task manager (Spring Boot service).
 
@@ -8,9 +8,11 @@ Event-driven collaborative task manager (Spring Boot service).
 - [x] PostgreSQL
 - [x] Redis (or a Redis-compatible provider)
 - [x] SMTP credentials for outgoing mail 🔒
+- [x] Kafka (for event-driven messaging)
+- [x] Event-driven architecture: service publishes domain events to Kafka
 
 ## What this service is
-`boardify-service` is a backend REST API built with Spring Boot. It stores data in PostgreSQL, caches/sessions in Redis, sends email via SMTP, and uses JWT for authentication.
+`boardify-service` is a backend REST API built with Spring Boot. It stores data in PostgreSQL, caches/sessions in Redis, sends email via SMTP, and uses JWT for authentication. The service follows an event-driven architecture: it publishes domain events (boards, lists, tasks, comments, membership changes) to Kafka so other services or consumers can react asynchronously (notifications, analytics, projections, etc.).
 
 ## Project Structure
 ```
@@ -38,10 +40,14 @@ src/main/java/com/boardify/boardify_service/
 │   ├── dto/
 │   ├── entity/
 │   └── repository/
-└── user/                    # User management
-    ├── dto/
-    ├── entity/
-    └── repository/
+├── user/                    # User management
+│   ├── dto/
+│   ├── entity/
+│   └── repository/
+├── common/                  # Shared utilities for events, kafka, etc.
+│   ├── event/               # Event POJOs (TaskCreatedEvent, etc.)
+│   └── kafka/               # Event publisher and topic constants
+└── config/                  # App-level configuration (KafkaConfig, RedisConfig, SecurityConfig)
 ```
 
 ## Database Schema
@@ -123,6 +129,8 @@ src/main/java/com/boardify/boardify_service/
 4. Server updates password and invalidates all sessions
 
 ## API Documentation
+
+Note: this service is event-driven — many write operations (create/update/delete on boards, lists, tasks, comments, membership changes) will publish domain events to Kafka. See the "Kafka Integration" section for topics, event shapes, and how to configure the Kafka bootstrap servers.
 
 ### Authentication
 
@@ -235,6 +243,9 @@ You can provide sensitive values via environment variables. Important properties
 - `app.jwt.exp-ms` - JWT expiration in milliseconds (default: 2 hours)
 - `app.frontend.url` - Frontend URL for email links
 
+Important note about Gmail and app passwords:
+- If you use Gmail (or Google Workspace) as the SMTP provider for the forgot-password / notification emails, you must use an app password (not your normal Google account password) when the account has 2‑step verification enabled. Generate an app password in your Google Account security settings and place that value into the `MAIL_PASSWORD` environment variable (or `MAIL_APP_PASSWORD` if you prefer a clearer name in your environment). Failure to provide a valid SMTP/app password will cause email sending to fail.
+
 Example `.env` (do NOT commit secrets):
 
 ```env
@@ -242,10 +253,50 @@ SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/boardify
 SPRING_DATASOURCE_USERNAME=boardify_user
 SPRING_DATASOURCE_PASSWORD=boardify_pass
 SPRING_DATA_REDIS_URL=rediss://:redis_password@redis-host:6379
-MAIL_PASSWORD=your_smtp_password
+MAIL_USERNAME=your.email@gmail.com
+MAIL_PASSWORD=your_smtp_or_app_password_here  # For Gmail: use an App Password generated in your Google Account
+# Optional explicit alternative name some teams prefer:
+# MAIL_APP_PASSWORD=your_google_app_password_here
 JWT_SECRET=change-me-to-a-secure-random-string
 JWT_EXP_MS=7200000
+SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092  # Kafka bootstrap server(s) (comma-separated)
 ```
+
+
+## Kafka Integration
+This application publishes domain events to Kafka so other services (or consumers) can react to board/list/task/comment changes.
+
+Key points:
+
+- Configuration
+  - Property: `spring.kafka.bootstrap-servers` (set via environment variable `SPRING_KAFKA_BOOTSTRAP_SERVERS`) — points to one or more Kafka bootstrap servers, e.g. `localhost:9092` or `broker1:9092,broker2:9092`.
+  - If you use a secured Kafka cluster (SASL/SSL), set the required Spring Kafka properties in `application.properties` or via environment variables (SASL mechanism, truststore, keystore, etc.).
+
+- Code locations
+  - Kafka producer configuration: `src/main/java/com/boardify/boardify_service/config/KafkaConfig.java` — creates a `KafkaTemplate<String,Object>` using `JsonSerializer` for event values.
+  - Event publisher wrapper: `src/main/java/com/boardify/boardify_service/common/kafka/EventPublisher.java` — simple component that wraps `KafkaTemplate` and provides `publish(topic, key, event)`.
+  - Topic constants: `src/main/java/com/boardify/boardify_service/common/kafka/Topics.java` — contains the topic names used by the application:
+    - `boardify.board.events`
+    - `boardify.list.events`
+    - `boardify.task.events`
+    - `boardify.comment.events`
+  - Event POJOs live under `src/main/java/com/boardify/boardify_service/common/event` (e.g. `TaskCreatedEvent`, `TaskUpdatedEvent`, `TaskMovedEvent`, etc.).
+
+- How events are published
+  - Services (for example `BoardService`, `BoardListService`, `TaskService`, `CommentService`) create small event objects and call `events.publish(topic, key, event)`.
+  - The `KafkaConfig` uses `JsonSerializer` which serializes the event POJO to JSON and includes type headers. Events include a simple `version` field so consumers can handle versioning.
+  - Keys are typically constructed to help consumers partition messages (for example `task-created-<id>`).
+
+- Topics and deployment
+  - The application assumes those topics exist or that the Kafka broker is configured with `auto.create.topics.enable=true` (not recommended for production). Prefer creating topics with appropriate partitions and retention policies prior to running in production.
+  - If you run Kafka locally for development, add `SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092` to your `.env` (example added above).
+
+- Docker / Compose
+  - If you want Kafka + Zookeeper for local development, add a Kafka service to your `docker-compose.yml` or use a ready-made compose file (for example `confluentinc/cp-kafka` images or `bitnami/kafka`). When running with Docker Compose ensure the service name and port match the `SPRING_KAFKA_BOOTSTRAP_SERVERS` value.
+
+- Resilience
+  - The current `EventPublisher` publishes fire-and-forget via `KafkaTemplate.send(...)`. In production you may want to add retries, error handling, or transactional guarantees depending on your delivery requirements.
+
 
 ## Build and Run
 
@@ -262,13 +313,27 @@ java -jar target/boardify-service-0.0.1-SNAPSHOT.jar
 ```
 
 ### Docker
-```bash
-# Build the Docker image
-docker build -t boardify-service .
+This project includes a `Dockerfile` and one or more `docker-compose.yml` files to make it easier to run the service and its dependencies (PostgreSQL, Redis) with Docker.
 
-# Run the container
-docker run --env-file .env -p 8080:8080 boardify-service
+Where to find them in this repository:
+- `boardify-service/Dockerfile` — Dockerfile used to build the `boardify-service` image.
+- `docker/docker-compose.yml` — a convenience compose file that brings up service dependencies and the application for local development (if present).
+- `boardify-service/docker-compose.yml` — an alternate compose file next to the service (if present).
+
+Typical usage (from the repository root):
+
+```bash
+# Build the service image and bring up all services defined in the compose file
+docker compose -f docker/docker-compose.yml --env-file .env up --build
+
+# Or to run just the service image built from the Dockerfile
+docker build -t boardify-service boardify-service/ ; docker run --env-file .env -p 8080:8080 boardify-service
 ```
+
+Notes when using Docker / Compose:
+- Ensure your `.env` contains the SMTP credentials (e.g. `MAIL_USERNAME` and `MAIL_PASSWORD`) so the app can send password reset emails.
+- If you use a managed Redis (or a secure Redis instance), set `SPRING_DATA_REDIS_URL` to the proper `redis://` or `rediss://` URI including credentials.
+- If your Docker host can't resolve external hostnames used by hosted Redis providers, ensure network/DNS settings are correct.
 
 ### Testing
 ```bash
@@ -317,4 +382,7 @@ docker run --env-file .env -p 8080:8080 boardify-service
 - Main application class: `src/main/java/com/boardify/boardify_service/BoardifyApplication.java`
 - Security configuration: `src/main/java/com/boardify/boardify_service/config/SecurityConfig.java`
 - Database configuration: `src/main/resources/application.properties`
+- Kafka configuration: `src/main/java/com/boardify/boardify_service/config/KafkaConfig.java`
+- Event publisher and topics: `src/main/java/com/boardify/boardify_service/common/kafka/EventPublisher.java`, `.../Topics.java`
+- Event POJOs: `src/main/java/com/boardify/boardify_service/common/event`
 - API Documentation: See API section above
