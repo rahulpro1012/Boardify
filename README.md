@@ -297,7 +297,11 @@ Key points:
 - Resilience
   - The current `EventPublisher` publishes fire-and-forget via `KafkaTemplate.send(...)`. In production you may want to add retries, error handling, or transactional guarantees depending on your delivery requirements.
 
-
+```markdown
+- **Development vs. Docker Configuration**
+    - **Running Locally (IntelliJ/Eclipse):** Set `SPRING_KAFKA_BOOTSTRAP_SERVERS=localhost:9092`. This connects your local Java app to the Kafka container's exposed port.
+    - **Running in Docker Compose:** Set `SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092`. This connects the app container to the Kafka container via the internal Docker network.
+    
 ## Build and Run
 
 ### Local Development
@@ -313,22 +317,16 @@ java -jar target/boardify-service-0.0.1-SNAPSHOT.jar
 ```
 
 ### Docker
-This project includes a `Dockerfile` and one or more `docker-compose.yml` files to make it easier to run the service and its dependencies (PostgreSQL, Redis) with Docker.
+This project includes a `Dockerfile` and `docker-compose.yml` to make it easier to run the service and its dependencies (PostgreSQL, Redis, Kafka) with Docker.
 
-Where to find them in this repository:
-- `boardify-service/Dockerfile` — Dockerfile used to build the `boardify-service` image.
-- `docker/docker-compose.yml` — a convenience compose file that brings up service dependencies and the application for local development (if present).
-- `boardify-service/docker-compose.yml` — an alternate compose file next to the service (if present).
+**Prerequisite:** Ensure your `.env` file is created in the project root.
 
-Typical usage (from the repository root):
+#### Option A: Run everything with Docker Compose (Recommended)
+This will start the Database, Redis, Kafka, Zookeeper, and the Boardify Service all together.
 
 ```bash
-# Build the service image and bring up all services defined in the compose file
-docker compose -f docker/docker-compose.yml --env-file .env up --build
-
-# Or to run just the service image built from the Dockerfile
-docker build -t boardify-service boardify-service/ ; docker run --env-file .env -p 8080:8080 boardify-service
-```
+# Build the app image and start all services
+docker compose -f docker/docker-compose.yml --env-file .env up --build -d
 
 Notes when using Docker / Compose:
 - Ensure your `.env` contains the SMTP credentials (e.g. `MAIL_USERNAME` and `MAIL_PASSWORD`) so the app can send password reset emails.
