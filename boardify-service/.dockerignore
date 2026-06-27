@@ -1,0 +1,11 @@
+.git
+.gitignore
+.idea
+.mvn
+.editorconfig
+*.md
+target/
+.DS_Store
+.env
+*.log
+.vscode
